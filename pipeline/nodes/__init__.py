@@ -28,7 +28,7 @@ def call_groq(prompt: str, max_tokens: int = 1024) -> str:
 
     try:
         response = client.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": "You are a compliance analysis AI. Respond only in valid JSON format as requested."},
                 {"role": "user", "content": prompt}
