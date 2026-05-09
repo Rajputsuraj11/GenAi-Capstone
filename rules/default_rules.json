@@ -1,0 +1,34 @@
+{
+  "pii": {
+    "check_emails": true,
+    "check_phones": true,
+    "check_ssn": true,
+    "check_names": true,
+    "sensitivity": "HIGH"
+  },
+  "confidential": {
+    "keywords": [
+      "confidential",
+      "proprietary",
+      "internal use only",
+      "do not distribute",
+      "trade secret",
+      "restricted",
+      "classified",
+      "NDA"
+    ],
+    "check_financial": true,
+    "check_ip": true
+  },
+  "encoding": {
+    "required_encoding": "utf-8",
+    "allowed_languages": ["en"],
+    "max_non_printable": 10
+  },
+  "abusive": {
+    "check_hate_speech": true,
+    "check_threats": true,
+    "check_explicit": true,
+    "check_illegal": true
+  }
+}
