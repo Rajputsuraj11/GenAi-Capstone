@@ -22,7 +22,9 @@
   },
   "encoding": {
     "required_encoding": "utf-8",
-    "allowed_languages": ["en"],
+    "allowed_languages": [
+      "en"
+    ],
     "max_non_printable": 10
   },
   "abusive": {

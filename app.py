@@ -251,7 +251,7 @@ if st.session_state.scan_result:
             return colors.get(val, "")
 
         st.dataframe(
-            df.style.applymap(color_severity, subset=["Severity"]),
+            df.style.map(color_severity, subset=["Severity"]),
             use_container_width=True,
             height=400
         )

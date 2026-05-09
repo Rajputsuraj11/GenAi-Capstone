@@ -15,8 +15,8 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
     findings: List[Finding] = []
 
     regex_patterns = {
-        "email": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
-        "phone": r'\b(\+?\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b',
+        "email": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b',
+        "phone": r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b',
         "ssn": r'\b\d{3}-\d{2}-\d{4}\b',
     }
 
@@ -32,10 +32,11 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
             if not rules.get(f"check_{pii_type}s", True):
                 continue
             matches = re.findall(pattern, text)
-            if matches:
+            valid_matches = [m for m in matches if m and len(str(m).strip()) > 0][:3]
+            if valid_matches:
                 local_findings.append({
                     "type": pii_type,
-                    "matches": matches[:3],
+                    "matches": valid_matches,
                     "method": "regex"
                 })
 
@@ -59,28 +60,49 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
                   + '{\n  "has_pii": true/false,\n  "findings": [\n    {\n      "pii_type": "email/phone/name/address/ssn/other",\n      "severity": "HIGH/MEDIUM/LOW",\n      "description": "brief description",\n      "evidence": "masked evidence e.g. j***@example.com"\n    }\n  ]\n}')
         response = call_gemini(prompt)
 
-        try:
-            clean = response.strip().replace("```json", "").replace("```", "")
-            result = json.loads(clean)
+        gemini_found_pii = False
 
-            if result.get("has_pii"):
-                for f in result.get("findings", []):
+        if response.startswith("ERROR:"):
+            findings.append(Finding(
+                page_number=page_num,
+                check_type="PII",
+                severity="LOW",
+                description=f"Gemini API Error: {response[:100]}",
+                evidence="AI analysis failed - check API key",
+                flagged=True
+            ))
+        else:
+            try:
+                clean = response.strip().replace("```json", "").replace("```", "")
+                result = json.loads(clean)
+
+                if result.get("has_pii"):
+                    gemini_found_pii = True
+                    for f in result.get("findings", []):
+                        findings.append(Finding(
+                            page_number=page_num,
+                            check_type="PII",
+                            severity=f.get("severity", "MEDIUM"),
+                            description=f"[AI] {f.get('description', '')}",
+                            evidence=f.get("evidence", ""),
+                            flagged=True
+                        ))
+                else:
                     findings.append(Finding(
                         page_number=page_num,
                         check_type="PII",
-                        severity=f.get("severity", "MEDIUM"),
-                        description=f.get("description", ""),
-                        evidence=f.get("evidence", ""),
-                        flagged=True
+                        severity="LOW",
+                        description="[AI] No PII detected by Gemini",
+                        evidence="Clean",
+                        flagged=False
                     ))
-        except (json.JSONDecodeError, KeyError):
-            if "pii" in response.lower() or "personal" in response.lower():
+            except (json.JSONDecodeError, KeyError) as e:
                 findings.append(Finding(
                     page_number=page_num,
                     check_type="PII",
                     severity="MEDIUM",
-                    description="Potential PII detected (parse error manual review needed)",
-                    evidence="[Could not extract evidence]",
+                    description=f"[AI] Parse error: {str(e)[:50]}",
+                    evidence=f"Raw: {response[:150]}",
                     flagged=True
                 ))
 
