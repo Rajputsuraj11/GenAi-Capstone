@@ -1,7 +1,7 @@
 import json
 from typing import List
 from pipeline.state import ComplianceState, Finding
-from pipeline.nodes import call_gemini
+from pipeline.nodes import call_groq
 
 
 def abusive_check_node(state: ComplianceState) -> ComplianceState:
@@ -35,7 +35,7 @@ def abusive_check_node(state: ComplianceState) -> ComplianceState:
                   + "Respond ONLY in this JSON format:\n"
                   + '{\n  "has_violations": true/false,\n  "findings": [\n    {\n      "severity": "HIGH/MEDIUM/LOW",\n      "violation_type": "hate_speech/threat/explicit/illegal/harassment/misinformation/other",\n      "description": "description of the violation",\n      "evidence": "[REDACTED - violation detected]"\n    }\n  ]\n}\n\n'
                   + "IMPORTANT: Do NOT reproduce harmful content in your response. Use [REDACTED] for evidence.")
-        response = call_gemini(prompt)
+        response = call_groq(prompt)
 
         try:
             clean = response.strip().replace("```json", "").replace("```", "")

@@ -1,7 +1,7 @@
 import json
 from typing import List
 from pipeline.state import ComplianceState, Finding
-from pipeline.nodes import call_gemini
+from pipeline.nodes import call_groq
 
 
 def confidential_check_node(state: ComplianceState) -> ComplianceState:
@@ -43,7 +43,7 @@ def confidential_check_node(state: ComplianceState) -> ComplianceState:
                   + "\"\"\"\n\n"
                   + "Respond ONLY in this JSON format:\n"
                   + '{\n  "has_confidential": true/false,\n  "findings": [\n    {\n      "severity": "HIGH/MEDIUM/LOW",\n      "category": "financial/IP/employee_data/trade_secret/contract/other",\n      "description": "what was found",\n      "evidence": "relevant excerpt (max 100 chars)"\n    }\n  ]\n}')
-        response = call_gemini(prompt)
+        response = call_groq(prompt)
 
         try:
             clean = response.strip().replace("```json", "").replace("```", "")

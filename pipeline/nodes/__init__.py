@@ -1,31 +1,24 @@
 import os
 import time
 from dotenv import load_dotenv
-import google.generativeai as genai
+from groq import Groq
 
 load_dotenv()
 
-api_key = os.getenv("GOOGLE_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
-    try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
-    except:
-        model = genai.GenerativeModel("gemini-1.5-flash-latest")
-else:
-    model = None
+api_key = os.getenv("GROQ_API_KEY")
+client = Groq(api_key=api_key) if api_key else None
 
-# Rate limiting: Free tier = 15 RPM (1 request per 4 seconds)
+# Rate limiting: Groq free tier = 20 requests/minute for llama3-8b
 LAST_CALL_TIME = 0
-MIN_DELAY_SECONDS = 4  # Wait 4 seconds between calls
+MIN_DELAY_SECONDS = 3  # Wait 3 seconds between calls (conservative)
 
 
-def call_gemini(prompt: str, max_tokens: int = 1024) -> str:
-    """Wrapper for Gemini API calls with rate limiting and error handling."""
+def call_groq(prompt: str, max_tokens: int = 1024) -> str:
+    """Wrapper for Groq API calls with rate limiting and error handling."""
     global LAST_CALL_TIME
 
-    if model is None:
-        return "ERROR: API key not configured"
+    if client is None:
+        return "ERROR: GROQ_API_KEY not configured"
 
     # Rate limiting - wait if needed
     elapsed = time.time() - LAST_CALL_TIME
@@ -34,17 +27,19 @@ def call_gemini(prompt: str, max_tokens: int = 1024) -> str:
         time.sleep(wait_time)
 
     try:
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                max_output_tokens=max_tokens,
-                temperature=0.1,
-            )
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "system", "content": "You are a compliance analysis AI. Respond only in valid JSON format as requested."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.1,
+            max_tokens=max_tokens
         )
         LAST_CALL_TIME = time.time()
-        return response.text
+        return response.choices[0].message.content
     except Exception as e:
         error_msg = str(e)
         if "429" in error_msg:
-            return f"ERROR: 429 Rate limit exceeded. Free tier allows 15 requests/minute. Wait 60 seconds and try again with a smaller PDF."
+            return f"ERROR: 429 Rate limit exceeded. Free tier allows 20 requests/minute. Wait 60 seconds and try again with a smaller PDF."
         return f"ERROR: {error_msg}"

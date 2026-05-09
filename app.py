@@ -139,7 +139,7 @@ with st.sidebar:
 
 
 st.title("📋 PDF Compliance Scanner")
-st.markdown("*Powered by Google Gemini 1.5 Flash + LangGraph*")
+st.markdown("*Powered by Groq LLaMA 3 + LangGraph*")
 st.markdown("---")
 
 col1, col2 = st.columns([1, 1])
@@ -204,10 +204,10 @@ with col2:
     st.markdown("""
     1. **Upload** any text-based PDF
     2. **LangGraph** orchestrates 4 AI agents:
-       - 🔐 PII Detection (Gemini + Regex)
-       - 🔒 Confidential Info (Gemini)
+       - 🔐 PII Detection (Groq + Regex)
+       - 🔒 Confidential Info (Groq)
        - 🔤 Encoding Check (Deterministic)
-       - ⚠️ Abusive Content (Gemini)
+       - ⚠️ Abusive Content (Groq)
     3. **Get** a page-wise compliance report
     4. **Download** PDF or JSON report
     5. **Edit** rules in the sidebar anytime

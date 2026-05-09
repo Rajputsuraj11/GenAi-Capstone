@@ -2,13 +2,13 @@ import json
 import re
 from typing import List
 from pipeline.state import ComplianceState, Finding
-from pipeline.nodes import call_gemini
+from pipeline.nodes import call_groq
 
 
 def pii_check_node(state: ComplianceState) -> ComplianceState:
     """
     Agent 1: Detect PII (emails, phones, SSNs, addresses, names).
-    Uses both regex pre-screening AND Gemini for contextual PII.
+    Uses both regex pre-screening AND Groq LLaMA for contextual PII.
     """
     pages = state["pages"]
     rules = state["rules"].get("pii", {})
@@ -58,7 +58,7 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
                   + "\"\"\"\n\n"
                   + "Respond in this EXACT JSON format only (no extra text):\n"
                   + '{\n  "has_pii": true/false,\n  "findings": [\n    {\n      "pii_type": "email/phone/name/address/ssn/other",\n      "severity": "HIGH/MEDIUM/LOW",\n      "description": "brief description",\n      "evidence": "masked evidence e.g. j***@example.com"\n    }\n  ]\n}')
-        response = call_gemini(prompt)
+        response = call_groq(prompt)
 
         gemini_found_pii = False
 
@@ -67,7 +67,7 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
                 page_number=page_num,
                 check_type="PII",
                 severity="LOW",
-                description=f"Gemini API Error: {response[:100]}",
+                description=f"Groq API Error: {response[:100]}",
                 evidence="AI analysis failed - check API key",
                 flagged=True
             ))
