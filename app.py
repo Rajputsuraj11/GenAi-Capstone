@@ -4,7 +4,7 @@ import json
 import tempfile
 from datetime import datetime
 from pipeline.extractor import extract_pages, get_pdf_metadata
-from pipeline.graph import build_smart_compliance_graph
+from pipeline.graph import build_compliance_graph
 from pipeline.state import ComplianceState
 from pipeline.report_generator import generate_report
 
@@ -182,7 +182,7 @@ with col1:
             )
 
             progress_bar = st.progress(0, text="Running LangGraph pipeline...")
-            graph = build_smart_compliance_graph()
+            graph = build_compliance_graph()
 
             progress_bar.progress(25, text="🔐 PII Agent running...")
             progress_bar.progress(50, text="🔒 Confidential Agent running...")
