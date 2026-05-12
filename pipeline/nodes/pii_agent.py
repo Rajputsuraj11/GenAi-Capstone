@@ -67,13 +67,13 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
                 page_number=page_num,
                 check_type="PII",
                 severity="LOW",
-                description=f"Groq API Error: {response[:100]}",
+                description=f"Groq API Error: {groq_response[:100]}",
                 evidence="AI analysis failed - check API key",
                 flagged=True
             ))
         else:
             try:
-                clean = response.strip().replace("```json", "").replace("```", "")
+                clean = groq_response.strip().replace("```json", "").replace("```", "")
                 result = json.loads(clean)
 
                 if result.get("has_pii"):
@@ -102,7 +102,7 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
                     check_type="PII",
                     severity="MEDIUM",
                     description=f"[AI] Parse error: {str(e)[:50]}",
-                    evidence=f"Raw: {response[:150]}",
+                    evidence=f"Raw: {groq_response[:150]}",
                     flagged=True
                 ))
 
