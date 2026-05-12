@@ -92,7 +92,7 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
                         page_number=page_num,
                         check_type="PII",
                         severity="LOW",
-                        description="[AI] No PII detected by Gemini",
+                        description="[AI] No PII detected by Groq",
                         evidence="Clean",
                         flagged=False
                     ))
@@ -106,15 +106,24 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
                     flagged=True
                 ))
 
+        # Add regex findings, but avoid duplicates with AI findings
+        regex_evidences = set()
+        for ai_finding in findings:
+            if ai_finding.evidence and "Pattern matches" not in ai_finding.evidence:
+                regex_evidences.add(ai_finding.evidence.lower())
+        
         for rf in local_findings:
-            findings.append(Finding(
-                page_number=page_num,
-                check_type="PII",
-                severity="HIGH",
-                description=f"Regex-detected {rf['type'].upper()}",
-                evidence=f"Pattern matches found: {str(rf['matches'])[:100]}",
-                flagged=True
-            ))
+            regex_evidence = f"Pattern matches found: {str(rf['matches'])[:100]}"
+            # Skip if AI already detected similar PII (avoid duplicates)
+            if not any(regex_evidence.lower() in existing_evidence for existing_evidence in regex_evidences):
+                findings.append(Finding(
+                    page_number=page_num,
+                    check_type="PII",
+                    severity="HIGH",
+                    description=f"Regex-detected {rf['type'].upper()}",
+                    evidence=regex_evidence,
+                    flagged=True
+                ))
 
     state["pii_findings"] = findings
     return state
