@@ -74,6 +74,14 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
         else:
             try:
                 clean = groq_response.strip().replace("```json", "").replace("```", "")
+                # Try to fix common JSON issues before parsing
+                clean = clean.replace('\n', ' ').replace('\r', '')
+                # Handle incomplete JSON by adding missing braces/quotes if needed
+                if clean.count('{') > clean.count('}'):
+                    clean += '}'
+                if clean.count('"') % 2 != 0:
+                    clean += '"'
+                
                 result = json.loads(clean)
 
                 if result.get("has_pii"):
@@ -109,8 +117,8 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
         # Add regex findings, but avoid duplicates with AI findings
         regex_evidences = set()
         for ai_finding in findings:
-            if ai_finding.evidence and "Pattern matches" not in ai_finding.evidence:
-                regex_evidences.add(ai_finding.evidence.lower())
+            if isinstance(ai_finding, dict) and ai_finding.get('evidence') and "Pattern matches" not in ai_finding.get('evidence', ''):
+                regex_evidences.add(ai_finding.get('evidence', '').lower())
         
         for rf in local_findings:
             regex_evidence = f"Pattern matches found: {str(rf['matches'])[:100]}"
