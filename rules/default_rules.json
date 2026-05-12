@@ -3,8 +3,7 @@
     "check_emails": true,
     "check_phones": true,
     "check_ssn": true,
-    "check_names": true,
-    "sensitivity": "HIGH"
+    "check_names": true
   },
   "confidential": {
     "keywords": [

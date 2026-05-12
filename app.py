@@ -49,8 +49,7 @@ def get_default_rules() -> dict:
             "check_emails": True,
             "check_phones": True,
             "check_ssn": True,
-            "check_names": True,
-            "sensitivity": "HIGH"
+            "check_names": True
         },
         "confidential": {
             "keywords": ["confidential", "proprietary", "internal use only",
@@ -93,8 +92,7 @@ with st.sidebar:
         rules["pii"]["check_phones"] = st.checkbox("Check Phone Numbers", value=rules["pii"]["check_phones"])
         rules["pii"]["check_ssn"] = st.checkbox("Check SSN", value=rules["pii"]["check_ssn"])
         rules["pii"]["check_names"] = st.checkbox("Check Full Names", value=rules["pii"]["check_names"])
-        rules["pii"]["sensitivity"] = st.select_slider("Sensitivity",
-            options=["LOW", "MEDIUM", "HIGH"], value=rules["pii"]["sensitivity"])
+        
 
     with tab_conf:
         st.subheader("Confidential Keywords")
