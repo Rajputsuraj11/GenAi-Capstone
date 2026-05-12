@@ -2,7 +2,7 @@ import json
 import re
 from typing import List
 from pipeline.state import ComplianceState, Finding
-from pipeline.nodes import call_groq
+from pipeline.nodes import call_groq_pii
 
 
 def pii_check_node(state: ComplianceState) -> ComplianceState:
@@ -58,11 +58,11 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
                   + "\"\"\"\n\n"
                   + "Respond in this EXACT JSON format only (no extra text):\n"
                   + '{\n  "has_pii": true/false,\n  "findings": [\n    {\n      "pii_type": "email/phone/name/address/ssn/other",\n      "severity": "HIGH/MEDIUM/LOW",\n      "description": "brief description",\n      "evidence": "masked evidence e.g. j***@example.com"\n    }\n  ]\n}')
-        response = call_groq(prompt)
+        groq_response = call_groq_pii(prompt)
 
         gemini_found_pii = False
 
-        if response.startswith("ERROR:"):
+        if groq_response.startswith("ERROR:"):
             findings.append(Finding(
                 page_number=page_num,
                 check_type="PII",
