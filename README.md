@@ -1,6 +1,6 @@
 # 📋 PDF Compliance Scanner
 
-AI-powered PDF compliance pipeline using Google Gemini, LangGraph, and Streamlit.
+AI-powered PDF compliance pipeline using Groq, LangGraph, and Streamlit.
 
 ## Features
 
@@ -53,15 +53,15 @@ AI-powered PDF compliance pipeline using Google Gemini, LangGraph, and Streamlit
 git clone https://github.com/Rajputsuraj11/GenAi-Capstone.git
 cd GenAi-Capstone
 pip install -r requirements.txt
-cp .env.example .env  # Add your Google AI Studio key
+cp .env.example .env  # Add your Groq API key
 streamlit run app.py
 ```
 
 ## Requirements
 
 - Python 3.10+
-- Google Gemini API Key (free tier: 15 RPM, 1M tokens/day)
-  - Get your key at: https://aistudio.google.com
+- Groq API Key (free tier available)
+  - Get your key at: https://console.groq.com
 
 ## Usage
 
@@ -111,15 +111,15 @@ pdf-compliance-scanner/
 
 | Check | Description | Method |
 |-------|-------------|--------|
-| PII | Emails, phones, SSNs, addresses | Regex + Gemini |
-| Confidential | Trade secrets, internal data | Gemini |
+| PII | Emails, phones, SSNs, addresses | Regex + Groq |
+| Confidential | Trade secrets, internal data | Groq |
 | Encoding | UTF-8, English only | Deterministic |
-| Abusive | Hate speech, illegal content | Gemini |
+| Abusive | Hate speech, illegal content | Groq |
 
 ## Technologies
 
 - **LangGraph**: Agent orchestration
-- **Google Gemini 1.5 Flash**: AI analysis (free tier)
+- **Groq**: AI analysis (fast LLM inference)
 - **PyMuPDF**: PDF text extraction
 - **Streamlit**: Web UI
 - **ReportLab**: PDF report generation
