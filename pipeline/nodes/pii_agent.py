@@ -20,6 +20,33 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
         "ssn": r'\b\d{3}-\d{2}-\d{4}\b',
     }
 
+    # Build enabled/disabled PII type lists from rules so AI respects them too
+    # Maps rule flag -> (pii_type_label, pii_type_key)
+    pii_type_map = [
+        ("check_emails",  "Email addresses",                      "email"),
+        ("check_phones",  "Phone numbers",                        "phone"),
+        ("check_ssn",     "Social Security Numbers / National IDs","ssn"),
+        ("check_names",   "Full names (especially with other info)","name"),
+    ]
+    # These types are always checked (not exposed as toggles in the UI)
+    always_checked = [
+        "Physical addresses",
+        "Date of birth",
+        "Financial account numbers",
+        "Medical information",
+    ]
+
+    enabled_types: List[str] = []
+    disabled_types: List[str] = []
+
+    for flag, label, _ in pii_type_map:
+        if rules.get(flag, True):
+            enabled_types.append(label)
+        else:
+            disabled_types.append(label)
+
+    enabled_types.extend(always_checked)
+
     for page in pages:
         if page["is_empty"]:
             continue
@@ -28,6 +55,7 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
         page_num = page["page_number"]
         local_findings = []
 
+        # Regex pre-screening — already respects rule flags
         for pii_type, pattern in regex_patterns.items():
             if not rules.get(f"check_{pii_type}s", True):
                 continue
@@ -40,27 +68,33 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
                     "method": "regex"
                 })
 
-        rules_json = json.dumps(rules)
+        # Build dynamic prompt that explicitly tells AI what to check / skip
         text_snippet = text[:3000]
-        prompt = ("You are a data privacy compliance officer. Analyze the following text from page "
-                  + str(page_num) + " of a PDF.\n\n"
-                  + "TASK: Identify any Personally Identifiable Information (PII) present.\n\n"
-                  + "PII includes (per rules: " + rules_json + "):\n"
-                  + "- Full names (especially if combined with other info)\n"
-                  + "- Email addresses\n"
-                  + "- Phone numbers\n"
-                  + "- Physical addresses\n"
-                  + "- Social Security Numbers / National IDs\n"
-                  + "- Date of birth\n"
-                  + "- Financial account numbers\n"
-                  + "- Medical information\n\n"
-                  + "TEXT TO ANALYZE:\n\"\"\"\n" + text_snippet
-                  + "\"\"\"\n\n"
-                  + "Respond in this EXACT JSON format only (no extra text):\n"
-                  + '{\n  "has_pii": true/false,\n  "findings": [\n    {\n      "pii_type": "email/phone/name/address/ssn/other",\n      "severity": "HIGH/MEDIUM/LOW",\n      "description": "brief description",\n      "evidence": "masked evidence e.g. j***@example.com"\n    }\n  ]\n}')
-        groq_response = call_groq_pii(prompt)
 
-        gemini_found_pii = False
+        enabled_list  = "\n".join(f"- {t}" for t in enabled_types)
+        disabled_block = (
+            "\n\nDO NOT flag or report any of the following — they are disabled by policy:\n"
+            + "\n".join(f"- {t}" for t in disabled_types)
+            if disabled_types else ""
+        )
+
+        prompt = (
+            f"You are a data privacy compliance officer. Analyze the following text from page {page_num} of a PDF.\n\n"
+            f"TASK: Identify ONLY the PII types listed under CHECK below. "
+            f"Ignore everything under DO NOT CHECK.\n\n"
+            f"CHECK for these PII types:\n{enabled_list}"
+            f"{disabled_block}\n\n"
+            f"TEXT TO ANALYZE:\n\"\"\"\n{text_snippet}\n\"\"\"\n\n"
+            "Respond in this EXACT JSON format only (no extra text):\n"
+            '{\n  "has_pii": true/false,\n  "findings": [\n    {\n'
+            '      "pii_type": "email/phone/name/address/ssn/other",\n'
+            '      "severity": "HIGH/MEDIUM/LOW",\n'
+            '      "description": "brief description",\n'
+            '      "evidence": "masked evidence e.g. j***@example.com"\n'
+            "    }\n  ]\n}"
+        )
+
+        groq_response = call_groq_pii(prompt)
 
         if groq_response.startswith("ERROR:"):
             findings.append(Finding(
@@ -74,19 +108,27 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
         else:
             try:
                 clean = groq_response.strip().replace("```json", "").replace("```", "")
-                # Try to fix common JSON issues before parsing
                 clean = clean.replace('\n', ' ').replace('\r', '')
-                # Handle incomplete JSON by adding missing braces/quotes if needed
                 if clean.count('{') > clean.count('}'):
                     clean += '}'
                 if clean.count('"') % 2 != 0:
                     clean += '"'
-                
+
                 result = json.loads(clean)
 
                 if result.get("has_pii"):
-                    gemini_found_pii = True
                     for f in result.get("findings", []):
+                        # Secondary guard: drop findings for disabled PII types
+                        pii_type_key = f.get("pii_type", "").lower()
+                        if pii_type_key == "email" and not rules.get("check_emails", True):
+                            continue
+                        if pii_type_key == "phone" and not rules.get("check_phones", True):
+                            continue
+                        if pii_type_key == "ssn" and not rules.get("check_ssn", True):
+                            continue
+                        if pii_type_key == "name" and not rules.get("check_names", True):
+                            continue
+
                         findings.append(Finding(
                             page_number=page_num,
                             check_type="PII",
@@ -114,15 +156,14 @@ def pii_check_node(state: ComplianceState) -> ComplianceState:
                     flagged=True
                 ))
 
-        # Add regex findings, but avoid duplicates with AI findings
+        # Add regex findings, avoiding duplicates with AI findings
         regex_evidences = set()
         for ai_finding in findings:
             if isinstance(ai_finding, dict) and ai_finding.get('evidence') and "Pattern matches" not in ai_finding.get('evidence', ''):
                 regex_evidences.add(ai_finding.get('evidence', '').lower())
-        
+
         for rf in local_findings:
             regex_evidence = f"Pattern matches found: {str(rf['matches'])[:100]}"
-            # Skip if AI already detected similar PII (avoid duplicates)
             if not any(regex_evidence.lower() in existing_evidence for existing_evidence in regex_evidences):
                 findings.append(Finding(
                     page_number=page_num,

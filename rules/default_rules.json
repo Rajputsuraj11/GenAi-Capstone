@@ -1,7 +1,7 @@
 {
   "pii": {
-    "check_emails": true,
-    "check_phones": true,
+    "check_emails": false,
+    "check_phones": false,
     "check_ssn": true,
     "check_names": true
   },
